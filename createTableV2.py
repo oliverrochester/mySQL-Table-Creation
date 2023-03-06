@@ -261,7 +261,7 @@ def mainHelper_GenerateAndExportData(mydb, mycursor, dbConnection, tableDetails,
 
 
 def main():
-    dbConnection = MySQLConnection("10.0.3.90", "root", "dtC5&CFiQ$9j", "training")
+    dbConnection = MySQLConnection("xxxx", "xxxx", "xxxx", "xxxx")
     mydb = dbConnection.establishConnection()
     mycursor = mydb.cursor()
 
