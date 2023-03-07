@@ -10,10 +10,10 @@ class MysqlTableCreation:
         
         self.mycursor = None
         self.mydb = mysql.connector.connect(
-            host="xxxx",
-            user="xxxx",
-            password="xxxx",
-            database="xxxx"
+            host="",
+            user="",
+            password="",
+            database=""
         )
         self.isConnected = self.checkConnection()
         self.tablesList = self.getExistingTables()

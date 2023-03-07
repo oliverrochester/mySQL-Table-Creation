@@ -1,5 +1,6 @@
 
 import mysql.connector
+from faker import Faker
 import string
 import random
 import math
@@ -35,23 +36,27 @@ class MySQLConnection:
                 point1 = "VARCHAR(255)"
             baseStr = baseStr + str(point[0]) + " " + str(point1).upper() + "," 
         baseStr = baseStr[:-1] + ")"
+        print('create table str:  ', baseStr)
         mycursor.execute(baseStr)
         
     def generateUploadString(self, tableDetails):
         baseStr = "INSERT INTO " + tableDetails.tablename + " ("
+        print('basestr part1: ', baseStr)
         for name in tableDetails.schema:
             baseStr = baseStr + str(name[0]) + ","
+        print('basestr part2: ', baseStr)
         baseStr = baseStr[:-1] + ") VAlUES ("
         for x in range(0,len(tableDetails.schema)):
             baseStr = baseStr + "%s,"
-        baseStr = baseStr + "%s,"
         baseStr = baseStr[:-1] + ")"
+        print("sql insert str after creation: ", baseStr)
         return baseStr
     
     def uploadBatch(self, valsToExecute, sqlInsert, mycursor, mydb, tabledetails):
+        print(sqlInsert)
         mycursor.executemany(sqlInsert, valsToExecute)
         mydb.commit()
-        print(tabledetails.uploaded + " Records uploaded")
+        print(str(tabledetails.uploaded) + " Records uploaded")
 
 class RandomSchema:
     def __init__(self):
@@ -220,44 +225,67 @@ def mainHelper_ConfirmDesiredSchema(schemaObject, recordAmount):
             schemaObject.generateSchema()
         else:
             return False
+        
+def mainHelper_determineVarchar(text,fake):
+    if "name" in text.lower():
+        return str(fake.name())
+    elif text == "address" or text == "adres" or text == "addres" or text == "adress" or text == "addr":
+        return str(fake.address())
+    elif "country" in text.lower():
+        return str(fake.country())
+    elif "email" in text.lower():
+        return str(fake.email())
+    elif text.lower() == "url":
+        return str(fake.url())
+    elif 'job' in text.lower():
+        return str(fake.job())
+    elif 'city' in text.lower():
+        return str(fake.city())
+    else:
+        return "TempStr"
 
-def mainHelper_generateRecord(tableDetails):
+
+
+def mainHelper_generateRecord(tableDetails,fake):
     retvals = []
     retvals.append(tableDetails.uploaded)
-    for point in tableDetails.schema:
+    for point in tableDetails.schema[1:]:
         if point[1] == "int":
             retvals.append(random.randint(1, 100))
         if point[1] == "varchar":
-            retvals.append("testing")
+            ans = mainHelper_determineVarchar(point[0], fake)
+            retvals.append(ans)
         if point[1] == "bool":
             retvals.append(random.randint(0, 1))
         if point[1] == "date":
-            retvals.append(datetime.date(random.randint(1000, 9999), random.randint(1, 12), random.randint(1, 28)))
+            retvals.append(fake.date())
     tableDetails.uploaded = tableDetails.uploaded + 1
     return retvals
 
-def mainHelper_GenerateUploadBatch(batchAmount, tableDetails, mydb, mycursor, dbConnection, sqlInsert):
+def mainHelper_GenerateUploadBatch(tableDetails, mydb, mycursor, dbConnection, sqlInsert,fake):
+    print("tabledetails.uploaded before generate record: ", str(tableDetails.uploaded))
     valsToExecute = []
     z = 0
-    while z < batchAmount:
-        valsToExecute.append(mainHelper_generateRecord(tableDetails))
+    while z < tableDetails.batchAmount:
+        valsToExecute.append(mainHelper_generateRecord(tableDetails,fake))
         z = z + 1
     dbConnection.uploadBatch(valsToExecute, sqlInsert, mycursor, mydb, tableDetails)
 
-def mainHelper_GenerateRemainingRecords(remaining, dbConnection, tableDetails):
+def mainHelper_GenerateRemainingRecords(tableDetails, mydb, mycursor, dbConnection, sqlInsert,fake):
     x = 0
     valsToExecute = []
-    while x < remaining:
-        valsToExecute.append(mainHelper_generateRecord(tableDetails))
+    while x < tableDetails.remainingRecords:
+        valsToExecute.append(mainHelper_generateRecord(tableDetails,fake))
         x = x + 1
-    dbConnection.uploadBatch(valsToExecute)
+    dbConnection.uploadBatch(valsToExecute, sqlInsert, mycursor, mydb, tableDetails)
 
 def mainHelper_GenerateAndExportData(mydb, mycursor, dbConnection, tableDetails, sqlInsert):
+    fake = Faker()
     x = 0
     while x < tableDetails.numberOfBatchesToRun:
-        mainHelper_GenerateUploadBatch(tableDetails.batchAmount, tableDetails.recordAmount, mydb, mycursor, dbConnection, sqlInsert)
+        mainHelper_GenerateUploadBatch(tableDetails, mydb, mycursor, dbConnection, sqlInsert,fake)
         x = x + 1
-    mainHelper_GenerateRemainingRecords(tableDetails.remainingRecords, dbConnection, tableDetails)
+    mainHelper_GenerateRemainingRecords(tableDetails, mydb, mycursor, dbConnection, sqlInsert,fake)
 
 
 def main():
@@ -271,21 +299,22 @@ def main():
     tableDetails.generateRecordAmount()
     recordAmount = tableDetails.getRecordAmount()
     tableDetails.setBatchAmount()
-    batchAmount = tableDetails.getBatchAmount()
     tableDetails.setTableSchemaType()
     schemaType = tableDetails.getSchemaType()
-    numberOfBatchesToRun = tableDetails.getNumberOfBatchesToRun()
-    remaining = tableDetails.getRemainingRecords()
+
 
     schemaObject = None
     if schemaType == "custom":
         schemaObject = CustomSchema()
         schemaObject.generateSchema()
+        tableDetails.schema = schemaObject.schema
     if schemaType == "random":
         schemaObject = RandomSchema()
         schemaObject.generateSchema()
+        tableDetails.schema = schemaObject.schema
 
     if mainHelper_ConfirmDesiredSchema(schemaObject, recordAmount):
+        tableDetails.schema = schemaObject.schema
         dbConnection.createTable(mycursor, tablename, schemaObject)
         sqlInsert = dbConnection.generateUploadString(tableDetails)
         mainHelper_GenerateAndExportData(mydb, mycursor, dbConnection, tableDetails, sqlInsert)
