@@ -28,8 +28,8 @@ class MySQLConnection:
         else:
             return None
         
-    def createTable(self, mycursor, tablename, schemaObject):
-        baseStr = "CREATE TABLE " + tablename + " ("
+    def createTable(self, mycursor, tableDetails, schemaObject):
+        baseStr = "CREATE TABLE " + tableDetails.tablename + " ("
         for point in schemaObject.schema:
             point1 = point[1]
             if point1 == "varchar":
@@ -136,6 +136,7 @@ class TableDetails:
         self.schemaType = ""
         self.schema = []
         self.uploaded = 0
+        self.tablesInDB = []
 
     def getTableName(self):
         return self.tablename
@@ -157,16 +158,21 @@ class TableDetails:
   
     def createTableName(self):
         tablename = input("\nEnter table name to be created: \n")
+        print(tablename)
         if self.helper_CheckIfTableExists(tablename):
             print("\n !!! Table already exists in database !!!")
             self.createTableName()
         else:
             self.tablename = tablename
 
-    def helper_CheckIfTableExists(self, tablename):
+    def getTablesInDB(self):
         self.mycursor.execute("SHOW TABLES")
         for table in self.mycursor:
-            if tablename == table[0]:
+            self.tablesInDB.append(table[0])
+
+    def helper_CheckIfTableExists(self, tablename):
+        for table in self.tablesInDB:
+            if tablename == table:
                 return True
         return False
     
@@ -208,11 +214,11 @@ class TableDetails:
 
 
 
-def mainHelper_ConfirmDesiredSchema(schemaObject, recordAmount):
+def mainHelper_ConfirmDesiredSchema(schemaObject, tableDetails):
     schema = []
     while True:
         schema = schemaObject.getSchema()
-        print("\nAre you sure you want to generate " + str(recordAmount) + " records with the following schema: (y/n, or 'r' to generte a new Schema)\n")
+        print("\nAre you sure you want to generate " + str(tableDetails.recordAmount) + " records with the following schema: (y/n, or 'r' to generte a new Schema)\n")
         for x in schema:
             print(x)
         ans = input()
@@ -243,8 +249,6 @@ def mainHelper_determineVarchar(text,fake):
         return str(fake.city())
     else:
         return "TempStr"
-
-
 
 def mainHelper_generateRecord(tableDetails,fake):
     retvals = []
@@ -289,33 +293,30 @@ def mainHelper_GenerateAndExportData(mydb, mycursor, dbConnection, tableDetails,
 
 
 def main():
-    dbConnection = MySQLConnection("xxxx", "xxxx", "xxxx", "xxxx")
+    dbConnection = MySQLConnection("10.0.3.90", "root", "dtC5&CFiQ$9j", "training")
     mydb = dbConnection.establishConnection()
     mycursor = mydb.cursor()
 
     tableDetails = TableDetails(mycursor)
+    tableDetails.getTablesInDB()
     tableDetails.createTableName()
-    tablename = tableDetails.getTableName()
     tableDetails.generateRecordAmount()
-    recordAmount = tableDetails.getRecordAmount()
     tableDetails.setBatchAmount()
     tableDetails.setTableSchemaType()
-    schemaType = tableDetails.getSchemaType()
-
 
     schemaObject = None
-    if schemaType == "custom":
+    if tableDetails.schemaType == "custom":
         schemaObject = CustomSchema()
         schemaObject.generateSchema()
         tableDetails.schema = schemaObject.schema
-    if schemaType == "random":
+    if tableDetails.schemaType == "random":
         schemaObject = RandomSchema()
         schemaObject.generateSchema()
         tableDetails.schema = schemaObject.schema
 
-    if mainHelper_ConfirmDesiredSchema(schemaObject, recordAmount):
+    if mainHelper_ConfirmDesiredSchema(schemaObject, tableDetails):
         tableDetails.schema = schemaObject.schema
-        dbConnection.createTable(mycursor, tablename, schemaObject)
+        dbConnection.createTable(mycursor, tableDetails, schemaObject)
         sqlInsert = dbConnection.generateUploadString(tableDetails)
         mainHelper_GenerateAndExportData(mydb, mycursor, dbConnection, tableDetails, sqlInsert)
     
