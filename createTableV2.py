@@ -41,19 +41,15 @@ class MySQLConnection:
         
     def generateUploadString(self, tableDetails):
         baseStr = "INSERT INTO " + tableDetails.tablename + " ("
-        print('basestr part1: ', baseStr)
         for name in tableDetails.schema:
             baseStr = baseStr + str(name[0]) + ","
-        print('basestr part2: ', baseStr)
         baseStr = baseStr[:-1] + ") VAlUES ("
         for x in range(0,len(tableDetails.schema)):
             baseStr = baseStr + "%s,"
         baseStr = baseStr[:-1] + ")"
-        print("sql insert str after creation: ", baseStr)
         return baseStr
     
     def uploadBatch(self, valsToExecute, sqlInsert, mycursor, mydb, tabledetails):
-        print(sqlInsert)
         mycursor.executemany(sqlInsert, valsToExecute)
         mydb.commit()
         print(str(tabledetails.uploaded) + " Records uploaded")
@@ -218,7 +214,7 @@ def mainHelper_ConfirmDesiredSchema(schemaObject, tableDetails):
     schema = []
     while True:
         schema = schemaObject.getSchema()
-        print("\nAre you sure you want to generate " + str(tableDetails.recordAmount) + " records with the following schema: (y/n, or 'r' to generte a new Schema)\n")
+        print("\nAre you sure you want to generate " + str(tableDetails.amtOfRecords) + " records with the following schema: (y/n, or 'r' to generte a new Schema)\n")
         for x in schema:
             print(x)
         ans = input()
@@ -267,7 +263,6 @@ def mainHelper_generateRecord(tableDetails,fake):
     return retvals
 
 def mainHelper_GenerateUploadBatch(tableDetails, mydb, mycursor, dbConnection, sqlInsert,fake):
-    print("tabledetails.uploaded before generate record: ", str(tableDetails.uploaded))
     valsToExecute = []
     z = 0
     while z < tableDetails.batchAmount:

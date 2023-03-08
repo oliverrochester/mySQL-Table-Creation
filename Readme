@@ -16,4 +16,7 @@ Add your mysql connection details in the MySQLConnection object instantiation pa
 Hit save
 Run the program. In the terminal, run: python3 createTableV2.py
 
-Notes:
+Todo:
+
+add try catch blocks to the code
+make the connection details not static, allow user to enter them on command line
