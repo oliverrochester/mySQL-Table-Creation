@@ -2,6 +2,7 @@ To run v1 program:
 
 install python on machine
 pip3 install mysql.connector
+pip3 install faker
 In the init function, change the mysql connection details to point at your desired MYSQL database
 Hit save
 Run the program. In the terminal, run: python3 createTableV1.py
